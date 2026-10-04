@@ -1,0 +1,14 @@
+From: PayPal Security <security@paypa1-example.test>
+To: analyst@example.com
+Reply-To: verify@paypa1-example.test
+Return-Path: <bounce@paypa1-example.test>
+Subject: URGENT: Your account has been suspended - verify immediately
+Authentication-Results: mx.example.test; spf=fail; dkim=fail; dmarc=fail
+Received: from suspicious-mail.example.test (203.0.113.50) by mx.example.test
+Content-Type: text/plain; charset="UTF-8"
+
+URGENT! Your account has been suspended.
+Click immediately to verify your password and payment information:
+http://paypa1-example.test/verify-login
+
+Failure to verify your account immediately may result in permanent suspension.
