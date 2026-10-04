@@ -3,7 +3,7 @@ import React,{useState} from "react";
 import {createRoot} from "react-dom/client";
 import "./style.css";
 
-const API="";
+const API=import.meta.env.VITE_API_URL || "";
 const nav=[["Overview","◈"],["Investigate","⌁"],["Cases","▦"],["Threat Graph","◎"],["IOC Center","⌕"],["Reports","▤"]];
 
 function App(){
@@ -74,7 +74,7 @@ function Overview({d,cases,file,setFile,analyze,busy}){
    <Metric icon="!" label="CRITICAL THREATS" value={critical||"00"} note="Immediate attention" danger/>
    <Metric icon="◉" label="HIGH RISK" value={high||"00"} note="Priority cases"/>
    <Metric icon="⌕" label="IOCs EXTRACTED" value={d?.iocs?.length??"00"} note="IPs • URLs • Domains"/>
-   <Metric icon="◈" label="ML CONFIDENCE" value={d?Math.round(d.ml.confidence*100)+"%":"—"} note="Explainable baseline"/>
+   <Metric icon="◈" label="ML CONFIDENCE" value={d?Math.round((d.ml?.confidence ?? 0)*100)+"%":"—"} note="Explainable baseline"/>
   </section>
 
   <div className="dashGrid">
@@ -94,7 +94,7 @@ function Overview({d,cases,file,setFile,analyze,busy}){
     <div className="coverage"><Cov n="Header forensics" ok/><Cov n="Phishing language" ok/><Cov n="Sender spoofing" ok/><Cov n="IOC extraction" ok/><Cov n="Infrastructure" ok/><Cov n="Evidence hashing" ok/></div>
    </section>
 
-   <section className="glass wide"><SectionHead title="Recent investigations" sub="Latest analyzed evidence"/>{cases.length?<table><thead><tr><th>CASE</th><th>SUBJECT</th><th>RISK</th><th>VERDICT</th><th>STATUS</th></tr></thead><tbody>{cases.slice(0,5).map(x=><tr><td className="mono">{x.case_id}</td><td>{x.subject||"No subject"}</td><td><span className={"riskPill "+x.risk_level.toLowerCase()}>{x.risk_score} • {x.risk_level}</span></td><td>{x.ml.label}</td><td><span className="statusPill">Investigating</span></td></tr>)}</tbody></table>:<div className="empty">Analyze an email to populate investigation activity.</div>}</section>
+   <section className="glass wide"><SectionHead title="Recent investigations" sub="Latest analyzed evidence"/>{cases.length?<table><thead><tr><th>CASE</th><th>SUBJECT</th><th>RISK</th><th>VERDICT</th><th>STATUS</th></tr></thead><tbody>{cases.slice(0,5).map(x=><tr><td className="mono">{x.case_id}</td><td>{x.subject||"No subject"}</td><td><span className={"riskPill "+x.risk_level.toLowerCase()}>{x.risk_score} • {x.risk_level}</span></td><td>{x.ml?.label || x.classification || "Unknown"}</td><td><span className="statusPill">Investigating</span></td></tr>)}</tbody></table>:<div className="empty">Analyze an email to populate investigation activity.</div>}</section>
 
    <section className="glass"><SectionHead title="Analysis pipeline" sub="Evidence processing stages"/><div className="pipeline2">{["INGEST","HEADERS","AUTH","AI / NLP","IOC","CORRELATE","RISK","REPORT"].map((x,i)=><div><b>{String(i+1).padStart(2,"0")}</b><span>{x}</span></div>)}</div></section>
   </div>
@@ -108,19 +108,19 @@ function Cov({n,ok}){return <div><span>{ok?"✓":"–"}</span>{n}</div>}
 
 function Investigate({d}){
  if(!d)return <div className="glass emptyPage"><div className="bigEmpty">⌁</div><h2>No investigation loaded</h2><p>Upload a suspicious .eml file from Overview to begin forensic analysis.</p></div>;
- return <div className="page"><div className="metricRow"><Metric label="RISK SCORE" value={d.risk_score+"/100"} note={d.risk_level}/><Metric label="AI VERDICT" value={d.ml.label} note={Math.round(d.ml.confidence*100)+"% confidence"}/><Metric label="URLS" value={d.urls.length} note="Extracted"/><Metric label="IP INDICATORS" value={d.ips.length} note="Observed"/><Metric label="ATTACHMENTS" value={d.attachments.length} note="SHA-256"/></div>
+ return <div className="page"><div className="metricRow"><Metric label="RISK SCORE" value={d.risk_score+"/100"} note={d.risk_level}/><Metric label="AI VERDICT" value={d.ml?.label || d.classification || "Unknown"} note={Math.round((d.ml?.confidence ?? 0)*100)+"% confidence"}/><Metric label="URLS" value={d.urls.length} note="Extracted"/><Metric label="IP INDICATORS" value={d.ips.length} note="Observed"/><Metric label="ATTACHMENTS" value={d.attachments.length} note="SHA-256"/></div>
  <div className="dashGrid"><section className="glass"><SectionHead title="Authentication" sub="Sender trust validation"/><div className="authDash"><AuthDot name="SPF" value={d.authentication.spf}/><AuthDot name="DKIM" value={d.authentication.dkim}/><AuthDot name="DMARC" value={d.authentication.dmarc}/></div></section>
  <section className="glass"><SectionHead title="Email identity" sub="Origin and routing evidence"/><div className="identity"><p><label>FROM</label><b>{d.from||"—"}</b></p><p><label>REPLY-TO</label><b>{d.reply_to||"—"}</b></p><p><label>SUBJECT</label><b>{d.subject||"—"}</b></p></div></section>
- <section className="glass wide"><SectionHead title="Explainable findings" sub="Why the engine assigned this risk level"/>{d.findings.map(f=><div className="finding2"><span className={f.severity}>{f.severity}</span><div><b>{f.title}</b><p>{f.detail}</p></div><strong>!</strong></div>)}</section>
- <section className="glass"><SectionHead title="IP intelligence" sub="Infrastructure enrichment"/>{d.geolocation.length?d.geolocation.map(x=><div className="geo2"><div className="geoPin">⌖</div><div><b>{x.ip}</b><span>{x.country} • {x.city}</span><small>{x.isp}</small></div></div>):<div className="empty">No IP observed.</div>}</section>
- <section className="glass"><SectionHead title="Forensic timeline" sub="Received header reconstruction"/>{d.timeline.length?d.timeline.map(x=><div className="timeline2"><i/ ><div><b>HOP {x.step}</b><p>{x.event}</p></div></div>):<div className="empty">No Received chain.</div>}</section></div></div>
+ <section className="glass wide"><SectionHead title="Explainable findings" sub="Why the engine assigned this risk level"/>{(d.findings || []).map(f=><div className="finding2"><span className={f.severity}>{f.severity}</span><div><b>{f.title}</b><p>{f.detail}</p></div><strong>!</strong></div>)}</section>
+ <section className="glass"><SectionHead title="IP intelligence" sub="Infrastructure enrichment"/>{(d.geolocation || []).length?(d.geolocation || []).map(x=><div className="geo2"><div className="geoPin">⌖</div><div><b>{x.ip}</b><span>{x.country} • {x.city}</span><small>{x.isp}</small></div></div>):<div className="empty">No IP observed.</div>}</section>
+ <section className="glass"><SectionHead title="Forensic timeline" sub="Received header reconstruction"/>{(d.timeline || []).length?(d.timeline || []).map(x=><div className="timeline2"><i/ ><div><b>HOP {x.step}</b><p>{x.event}</p></div></div>):<div className="empty">No Received chain.</div>}</section></div></div>
 }
 
-function Cases({cases}){return <div className="page"><section className="glass"><SectionHead title="Investigation cases" sub="Evidence-driven case management"/>{cases.length?<table><thead><tr><th>CASE</th><th>SUBJECT</th><th>RISK</th><th>AI VERDICT</th><th>STATUS</th></tr></thead><tbody>{cases.map(x=><tr><td className="mono">{x.case_id}</td><td>{x.subject}</td><td><span className={"riskPill "+x.risk_level.toLowerCase()}>{x.risk_score} • {x.risk_level}</span></td><td>{x.ml.label}</td><td><span className="statusPill">Investigating</span></td></tr>)}</tbody></table>:<div className="empty">No cases yet. Analyze an email first.</div>}</section></div>}
+function Cases({cases}){return <div className="page"><section className="glass"><SectionHead title="Investigation cases" sub="Evidence-driven case management"/>{cases.length?<table><thead><tr><th>CASE</th><th>SUBJECT</th><th>RISK</th><th>AI VERDICT</th><th>STATUS</th></tr></thead><tbody>{cases.map(x=><tr><td className="mono">{x.case_id}</td><td>{x.subject}</td><td><span className={"riskPill "+x.risk_level.toLowerCase()}>{x.risk_score} • {x.risk_level}</span></td><td>{x.ml?.label || x.classification || "Unknown"}</td><td><span className="statusPill">Investigating</span></td></tr>)}</tbody></table>:<div className="empty">No cases yet. Analyze an email first.</div>}</section></div>}
 
-function Graph({d}){return <div className="page"><section className="glass"><SectionHead title="Threat infrastructure graph" sub="Email → identity → infrastructure correlation"/>{!d?<div className="empty">Analyze an email first.</div>:<div className="threatCanvas"><div className="graphCenter"><b>EMAIL</b><small>Investigation</small></div>{d.graph.nodes.slice(1,9).map((n,i)=><div className={"thNode t"+i}><span>{n.type}</span><b>{n.label}</b></div>)}<div className="graphLines"/><div className="graphLegend">CORRELATION-READY • SENDER • DOMAIN • IP • URL</div></div>}</section></div>}
+function Graph({d}){return <div className="page"><section className="glass"><SectionHead title="Threat infrastructure graph" sub="Email → identity → infrastructure correlation"/>{!d?<div className="empty">Analyze an email first.</div>:<div className="threatCanvas"><div className="graphCenter"><b>EMAIL</b><small>Investigation</small></div>{(d.graph?.nodes || []).slice(1,9).map((n,i)=><div className={"thNode t"+i}><span>{n.type}</span><b>{n.label || n.kind || n.type || "Unknown"}</b></div>)}<div className="graphLines"/><div className="graphLegend">CORRELATION-READY • SENDER • DOMAIN • IP • URL</div></div>}</section></div>}
 
-function IOCs({d}){return <div className="page"><section className="glass"><SectionHead title="IOC intelligence center" sub="Indicators extracted from current evidence"/>{!d?<div className="empty">Analyze an email first.</div>:<div className="iocBig">{d.iocs.map(x=><div className="iocCard"><span>{x.type}</span><code>{x.value}</code><small>Extracted from evidence</small></div>)}</div>}</section></div>}
+function IOCs({d}){return <div className="page"><section className="glass"><SectionHead title="IOC intelligence center" sub="Indicators extracted from current evidence"/>{!d?<div className="empty">Analyze an email first.</div>:<div className="iocBig">{(d.iocs || []).map(x=><div className="iocCard"><span>{x.type}</span><code>{x.value}</code><small>Extracted from evidence</small></div>)}</div>}</section></div>}
 
 function Reports({file}){return <div className="page"><section className="glass reportHero"><div className="reportIcon">▤</div><div><h2>Forensic Investigation Report</h2><p>Generate an evidence-focused report containing authentication, findings, IOCs, infrastructure and timeline.</p>{file?<button onClick={async()=>{let f=new FormData();f.append("file",file);let r=await fetch("/api/report",{method:"POST",body:f});let h=await r.text();let w=window.open();w.document.write(h)}}>GENERATE REPORT ↗</button>:<span className="hint">Select an .eml file from Overview first.</span>}</div></section></div>}
 
